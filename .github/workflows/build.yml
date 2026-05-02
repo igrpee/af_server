@@ -150,7 +150,7 @@ jobs:
           printf "    else -> \"unknown command\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "   }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "   val response = \"HTTP/1.1 200 OK\\r\\n\\r\\n\$result\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val response = \"HTTP/1.1 200 OK\\r\\n\\r\\n\" + result\n"
           printf "   output.write(response.toByteArray())\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "   output.flush()\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "   socket.close()\n" >> app/src/main/java/com/af/client/MainActivity.kt
