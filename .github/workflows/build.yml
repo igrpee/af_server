@@ -1,0 +1,159 @@
+name: Android APK CI
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        run: |
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
+
+          if [ ! -d "latest" ]; then
+            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+            unzip -q tools.zip
+            mv cmdline-tools latest
+          fi
+
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Generate project
+        run: |
+          mkdir -p app/src/main/java/com/af/client
+          mkdir -p app/src/main
+
+          printf 'pluginManagement {\n repositories { google(); mavenCentral(); gradlePluginPortal(); }\n}\n' > settings.gradle
+          printf 'dependencyResolutionManagement {\n repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n repositories { google(); mavenCentral(); }\n}\nrootProject.name="af_client"\ninclude ":app"\n' >> settings.gradle
+
+          printf "plugins { id 'com.android.application' version '8.1.0' apply false }\n" > build.gradle
+
+          printf "plugins { id 'com.android.application' }\n" > app/build.gradle
+          printf "android {\n namespace \"com.af.client\"\n compileSdk 34\n defaultConfig {\n applicationId \"com.af.client\"\n minSdk 24\n targetSdk 34\n versionCode 1\n versionName \"1.0\"\n }\n buildTypes { debug { minifyEnabled false } }\n compileOptions { sourceCompatibility JavaVersion.VERSION_17 targetCompatibility JavaVersion.VERSION_17 }\n }\n dependencies {}\n" >> app/build.gradle
+
+          # Manifest
+          printf '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n' > app/src/main/AndroidManifest.xml
+          printf '<uses-permission android:name="android.permission.INTERNET"/>\n' >> app/src/main/AndroidManifest.xml
+          printf '<application android:label="AF Server" android:usesCleartextTraffic="true">\n' >> app/src/main/AndroidManifest.xml
+          printf '<activity android:name=".MainActivity" android:exported="true">\n' >> app/src/main/AndroidManifest.xml
+          printf '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>\n' >> app/src/main/AndroidManifest.xml
+          printf '</activity></application></manifest>\n' >> app/src/main/AndroidManifest.xml
+
+          # MainActivity
+          cat << 'EOF' > app/src/main/java/com/af/client/MainActivity.kt
+package com.af.client
+
+import android.app.Activity
+import android.os.Bundle
+import android.widget.TextView
+import java.net.ServerSocket
+import java.net.Socket
+import kotlin.concurrent.thread
+
+class MainActivity : Activity() {
+
+    lateinit var tv: TextView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        tv = TextView(this)
+        tv.text = "Server running on 8080"
+        setContentView(tv)
+
+        startServer()
+    }
+
+    private fun startServer() {
+        thread {
+            val server = ServerSocket(8080)
+            while (true) {
+                val client = server.accept()
+                handle(client)
+            }
+        }
+    }
+
+    private fun handle(socket: Socket) {
+        thread {
+            val input = socket.getInputStream().bufferedReader()
+            val output = socket.getOutputStream()
+
+            val line = input.readLine() ?: return@thread
+            val cmd = line.substringAfter("cmd=").substringBefore(" ")
+
+            val result = when (cmd) {
+                "services_java" -> listServices()
+                "services_shell" -> exec("service list")
+                "packages" -> exec("cmd package list packages")
+                "activity" -> exec("dumpsys activity")
+                else -> "unknown command"
+            }
+
+            val response = "HTTP/1.1 200 OK\r\n\r\n$result"
+            output.write(response.toByteArray())
+            output.flush()
+            socket.close()
+        }
+    }
+
+    private fun listServices(): String {
+        return try {
+            val sm = Class.forName("android.os.ServiceManager")
+            val method = sm.getDeclaredMethod("listServices")
+            val result = method.invoke(null) as Array<String>
+            result.joinToString("\n")
+        } catch (e: Exception) {
+            "java error: ${e.message}"
+        }
+    }
+
+    private fun exec(cmd: String): String {
+        return try {
+            val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", cmd))
+            process.inputStream.bufferedReader().readText()
+        } catch (e: Exception) {
+            "exec error: ${e.message}"
+        }
+    }
+}
+EOF
+
+          printf "sdk.dir=$ANDROID_SDK_ROOT\n" > local.properties
+
+      - name: Setup Gradle
+        run: |
+          sudo apt-get update && sudo apt-get install -y unzip curl
+          curl -L https://services.gradle.org/distributions/gradle-8.3-bin.zip -o gradle.zip
+          unzip -q gradle.zip
+          mv gradle-8.3 gradle
+          chmod +x gradle/bin/gradle
+
+      - name: Build APK
+        run: ./gradle/bin/gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
