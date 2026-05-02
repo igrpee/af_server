@@ -9,9 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,168 +20,19 @@ jobs:
           java-version: 17
 
       - name: Setup Android SDK
-        run: |
-          sudo mkdir -p $ANDROID_SDK_ROOT
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT/cmdline-tools
+        uses: android-actions/setup-android@v3
 
-          if [ ! -d "latest" ]; then
-            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-            unzip -q tools.zip
-            mv cmdline-tools latest
+      - name: Grant gradle permission
+        run: chmod +x gradlew || true
+
+      - name: Setup Gradle Wrapper
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper
           fi
 
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
-
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Generate project
-        run: |
-          mkdir -p app/src/main/java/com/af/client
-          mkdir -p app/src/main
-
-          printf 'pluginManagement {\n' > settings.gradle
-          printf ' repositories { google(); mavenCentral(); gradlePluginPortal(); }\n' >> settings.gradle
-          printf '}\n' >> settings.gradle
-
-          printf 'dependencyResolutionManagement {\n' >> settings.gradle
-          printf ' repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n' >> settings.gradle
-          printf ' repositories { google(); mavenCentral(); }\n' >> settings.gradle
-          printf '}\n' >> settings.gradle
-
-          printf 'rootProject.name="af_client"\n' >> settings.gradle
-          printf 'include ":app"\n' >> settings.gradle
-
-          printf "plugins {\n" > build.gradle
-          printf " id 'com.android.application' version '8.1.0' apply false\n" >> build.gradle
-          printf " id 'org.jetbrains.kotlin.android' version '1.9.0' apply false\n" >> build.gradle
-          printf "}\n" >> build.gradle
-
-          printf "plugins {\n" > app/build.gradle
-          printf " id 'com.android.application'\n" >> app/build.gradle
-          printf " id 'org.jetbrains.kotlin.android'\n" >> app/build.gradle
-          printf "}\n" >> app/build.gradle
-
-          printf "android {\n" >> app/build.gradle
-          printf " namespace \"com.af.client\"\n" >> app/build.gradle
-          printf " compileSdk 34\n" >> app/build.gradle
-
-          printf " defaultConfig {\n" >> app/build.gradle
-          printf "  applicationId \"com.af.client\"\n" >> app/build.gradle
-          printf "  minSdk 24\n" >> app/build.gradle
-          printf "  targetSdk 34\n" >> app/build.gradle
-          printf "  versionCode 1\n" >> app/build.gradle
-          printf "  versionName \"1.0\"\n" >> app/build.gradle
-          printf " }\n" >> app/build.gradle
-
-          printf " buildTypes { debug { minifyEnabled false } }\n" >> app/build.gradle
-
-          printf " compileOptions {\n" >> app/build.gradle
-          printf "  sourceCompatibility JavaVersion.VERSION_17\n" >> app/build.gradle
-          printf "  targetCompatibility JavaVersion.VERSION_17\n" >> app/build.gradle
-          printf " }\n" >> app/build.gradle
-
-          printf " kotlinOptions { jvmTarget = \"17\" }\n" >> app/build.gradle
-
-          printf "}\n" >> app/build.gradle
-
-          printf "dependencies {}\n" >> app/build.gradle
-
-          printf '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n' > app/src/main/AndroidManifest.xml
-          printf '<uses-permission android:name="android.permission.INTERNET"/>\n' >> app/src/main/AndroidManifest.xml
-          printf '<application android:label="AF Server" android:usesCleartextTraffic="true">\n' >> app/src/main/AndroidManifest.xml
-          printf '<activity android:name=".MainActivity" android:exported="true">\n' >> app/src/main/AndroidManifest.xml
-          printf '<intent-filter>\n' >> app/src/main/AndroidManifest.xml
-          printf '<action android:name="android.intent.action.MAIN"/>\n' >> app/src/main/AndroidManifest.xml
-          printf '<category android:name="android.intent.category.LAUNCHER"/>\n' >> app/src/main/AndroidManifest.xml
-          printf '</intent-filter>\n' >> app/src/main/AndroidManifest.xml
-          printf '</activity>\n' >> app/src/main/AndroidManifest.xml
-          printf '</application>\n' >> app/src/main/AndroidManifest.xml
-          printf '</manifest>\n' >> app/src/main/AndroidManifest.xml
-
-          printf "package com.af.client\n\n" > app/src/main/java/com/af/client/MainActivity.kt
-
-          printf "import android.app.Activity\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import android.os.Bundle\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import android.widget.TextView\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import android.content.Context\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import android.net.wifi.WifiManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import android.os.BatteryManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import java.net.ServerSocket\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import java.net.Socket\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import kotlin.concurrent.thread\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf "class MainActivity : Activity() {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " lateinit var tv: TextView\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf " override fun onCreate(savedInstanceState: Bundle?) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  super.onCreate(savedInstanceState)\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  tv = TextView(this)\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  tv.text = \"Server running on 8080\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  setContentView(tv)\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  startServer()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf " private fun startServer() {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  thread {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   val server = ServerSocket(8080)\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   while (true) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "    val client = server.accept()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "    handle(client)\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   }\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  }\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf " private fun handle(socket: Socket) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  thread {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   val input = socket.getInputStream().bufferedReader()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   val output = socket.getOutputStream()\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf "   val line = input.readLine() ?: return@thread\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   val cmd = line.substringAfter(\"cmd=\").substringBefore(\" \")\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf "   val result = when(cmd) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "    \"battery\" -> getBattery()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "    \"wifi\" -> getWifi()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "    else -> \"unknown command\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf '   val response = "HTTP/1.1 200 OK\r\n\r\n" + result\n' >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   output.write(response.toByteArray())\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   output.flush()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "   socket.close()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  }\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf " private fun getBattery(): String {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  val bm = getSystemService(BATTERY_SERVICE) as BatteryManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  return \"Battery: \$level%%\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf " private fun getWifi(): String {\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  return if (wm.isWifiEnabled) \"WiFi ON\" else \"WiFi OFF\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf "}\n" >> app/src/main/java/com/af/client/MainActivity.kt
-
-          printf "sdk.dir=$ANDROID_SDK_ROOT\n" > local.properties
-
-      - name: Setup Gradle
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip curl
-
-          curl -L https://services.gradle.org/distributions/gradle-8.3-bin.zip -o gradle.zip
-          unzip -q gradle.zip
-          mv gradle-8.3 gradle
-          chmod +x gradle/bin/gradle
-
       - name: Build APK
-        run: |
-          ./gradle/bin/gradle assembleDebug --stacktrace
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
