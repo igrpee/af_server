@@ -1,0 +1,114 @@
+# =========================
+# ===== VIM / EDITOR ======
+# =========================
+*.swp
+*.swo
+*.swn
+*.swm
+*.swl
+*~
+*.bak
+*.tmp
+*.un~
+Session.vim
+
+# =========================
+# ===== KOTLIN / JAVA =====
+# =========================
+*.class
+*.jar
+*.war
+*.ear
+
+.kotlin/
+.kotlin-build/
+build/
+out/
+
+# =========================
+# ===== GRADLE (CI + local)
+# =========================
+.gradle/
+gradle-app.setting
+caches/
+daemon/
+native/
+
+# wrapper оставить в репо
+!gradle/wrapper/gradle-wrapper.jar
+
+# =========================
+# ===== ANDROID / APK BRIDGE
+# =========================
+*.apk
+*.aab
+*.ap_
+*.dex
+
+local.properties
+output.json
+
+# Android Studio / IDE
+.idea/
+*.iml
+
+# =========================
+# ===== TERMUX / LINUX =====
+# =========================
+.DS_Store
+Thumbs.db
+
+*.log
+*.pid
+*.sock
+
+# Termux shared storage junk
+storage/
+sdcard/
+
+# =========================
+# ===== HTTP SERVER TEMP ===
+# =========================
+temp/
+tmp/
+cache/
+responses/
+request_dump/
+
+# если ты логируешь команды типа getBattery()
+logs/
+server.log
+
+# =========================
+# ===== API / SECURITY =====
+# =========================
+.env
+.env.*
+*.key
+*.pem
+*.keystore
+*.jks
+
+# токены / секреты
+secrets.json
+config.secret.json
+
+# =========================
+# ===== GITHUB ACTIONS =====
+# =========================
+.github/workflows/*.log
+.github/actions/cache/
+.github/workflows/*.tmp
+
+# CI artifacts (если сохраняешь локально перед upload)
+artifact/
+artifacts/
+ci-output/
+
+# =========================
+# ===== MISC =====
+# =========================
+*.orig
+*.rej
+*.backup
+*.old
