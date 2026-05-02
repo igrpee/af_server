@@ -56,14 +56,16 @@ jobs:
           printf 'rootProject.name="af_client"\n' >> settings.gradle
           printf 'include ":app"\n' >> settings.gradle
 
-          # root build.gradle
+          # root build.gradle (FIXED Kotlin plugin added)
           printf "plugins {\n" > build.gradle
           printf " id 'com.android.application' version '8.1.0' apply false\n" >> build.gradle
+          printf " id 'org.jetbrains.kotlin.android' version '1.9.0' apply false\n" >> build.gradle
           printf "}\n" >> build.gradle
 
-          # app build.gradle
+          # app build.gradle (FIX compileOptions split FIX)
           printf "plugins {\n" > app/build.gradle
           printf " id 'com.android.application'\n" >> app/build.gradle
+          printf " id 'org.jetbrains.kotlin.android'\n" >> app/build.gradle
           printf "}\n" >> app/build.gradle
 
           printf "android {\n" >> app/build.gradle
@@ -79,7 +81,15 @@ jobs:
           printf " }\n" >> app/build.gradle
 
           printf " buildTypes { debug { minifyEnabled false } }\n" >> app/build.gradle
-          printf " compileOptions { sourceCompatibility JavaVersion.VERSION_17 targetCompatibility JavaVersion.VERSION_17 }\n" >> app/build.gradle
+
+          # 🔥 FIX: compileOptions MUST be multiline
+          printf " compileOptions {\n" >> app/build.gradle
+          printf "  sourceCompatibility JavaVersion.VERSION_17\n" >> app/build.gradle
+          printf "  targetCompatibility JavaVersion.VERSION_17\n" >> app/build.gradle
+          printf " }\n" >> app/build.gradle
+
+          printf " kotlinOptions { jvmTarget = \"17\" }\n" >> app/build.gradle
+
           printf "}\n" >> app/build.gradle
 
           printf "dependencies {}\n" >> app/build.gradle
@@ -97,14 +107,13 @@ jobs:
           printf '</application>\n' >> app/src/main/AndroidManifest.xml
           printf '</manifest>\n' >> app/src/main/AndroidManifest.xml
 
-          # MainActivity (ВАЖНО: FIX package issue)
+          # MainActivity
           printf "package com.af.client\n\n" > app/src/main/java/com/af/client/MainActivity.kt
 
           printf "import android.app.Activity\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import android.os.Bundle\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import android.widget.TextView\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import java.net.ServerSocket\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "import java.net.Socket\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import kotlin.concurrent.thread\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
           printf "class MainActivity : Activity() {\n" >> app/src/main/java/com/af/client/MainActivity.kt
@@ -146,7 +155,7 @@ jobs:
 
       - name: Build APK
         run: |
-          ./gradle/bin/gradle assembleDebug
+          ./gradle/bin/gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
