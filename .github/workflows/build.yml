@@ -44,7 +44,6 @@ jobs:
           mkdir -p app/src/main/java/com/af/client
           mkdir -p app/src/main
 
-          # settings.gradle
           printf 'pluginManagement {\n' > settings.gradle
           printf ' repositories { google(); mavenCentral(); gradlePluginPortal(); }\n' >> settings.gradle
           printf '}\n' >> settings.gradle
@@ -57,13 +56,11 @@ jobs:
           printf 'rootProject.name="af_client"\n' >> settings.gradle
           printf 'include ":app"\n' >> settings.gradle
 
-          # root build.gradle
           printf "plugins {\n" > build.gradle
           printf " id 'com.android.application' version '8.1.0' apply false\n" >> build.gradle
           printf " id 'org.jetbrains.kotlin.android' version '1.9.0' apply false\n" >> build.gradle
           printf "}\n" >> build.gradle
 
-          # app/build.gradle
           printf "plugins {\n" > app/build.gradle
           printf " id 'com.android.application'\n" >> app/build.gradle
           printf " id 'org.jetbrains.kotlin.android'\n" >> app/build.gradle
@@ -91,9 +88,9 @@ jobs:
           printf " kotlinOptions { jvmTarget = \"17\" }\n" >> app/build.gradle
 
           printf "}\n" >> app/build.gradle
+
           printf "dependencies {}\n" >> app/build.gradle
 
-          # Manifest
           printf '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n' > app/src/main/AndroidManifest.xml
           printf '<uses-permission android:name="android.permission.INTERNET"/>\n' >> app/src/main/AndroidManifest.xml
           printf '<application android:label="AF Server" android:usesCleartextTraffic="true">\n' >> app/src/main/AndroidManifest.xml
@@ -106,78 +103,74 @@ jobs:
           printf '</application>\n' >> app/src/main/AndroidManifest.xml
           printf '</manifest>\n' >> app/src/main/AndroidManifest.xml
 
-          # Kotlin file
-          FILE=app/src/main/java/com/af/client/MainActivity.kt
+          printf "package com.af.client\n\n" > app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "package com.af.client\n\n" > $FILE
+          printf "import android.app.Activity\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.os.Bundle\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.widget.TextView\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.content.Context\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.net.wifi.WifiManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.os.BatteryManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import java.net.ServerSocket\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import java.net.Socket\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import kotlin.concurrent.thread\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "import android.app.Activity\n" >> $FILE
-          printf "import android.os.Bundle\n" >> $FILE
-          printf "import android.widget.TextView\n" >> $FILE
-          printf "import android.content.Context\n" >> $FILE
-          printf "import android.net.wifi.WifiManager\n" >> $FILE
-          printf "import android.os.BatteryManager\n" >> $FILE
-          printf "import java.net.ServerSocket\n" >> $FILE
-          printf "import java.net.Socket\n" >> $FILE
-          printf "import kotlin.concurrent.thread\n\n" >> $FILE
+          printf "class MainActivity : Activity() {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " lateinit var tv: TextView\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "class MainActivity : Activity() {\n" >> $FILE
-          printf " lateinit var tv: TextView\n\n" >> $FILE
+          printf " override fun onCreate(savedInstanceState: Bundle?) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  super.onCreate(savedInstanceState)\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  tv = TextView(this)\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  tv.text = \"Server running on 8080\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  setContentView(tv)\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  startServer()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf " override fun onCreate(savedInstanceState: Bundle?) {\n" >> $FILE
-          printf "  super.onCreate(savedInstanceState)\n" >> $FILE
-          printf "  tv = TextView(this)\n" >> $FILE
-          printf "  tv.text = \"Server running on 8080\"\n" >> $FILE
-          printf "  setContentView(tv)\n\n" >> $FILE
-          printf "  startServer()\n" >> $FILE
-          printf " }\n\n" >> $FILE
+          printf " private fun startServer() {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  thread {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val server = ServerSocket(8080)\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   while (true) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    val client = server.accept()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    handle(client)\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   }\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  }\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf " private fun startServer() {\n" >> $FILE
-          printf "  thread {\n" >> $FILE
-          printf "   val server = ServerSocket(8080)\n" >> $FILE
-          printf "   while (true) {\n" >> $FILE
-          printf "    val client = server.accept()\n" >> $FILE
-          printf "    handle(client)\n" >> $FILE
-          printf "   }\n" >> $FILE
-          printf "  }\n" >> $FILE
-          printf " }\n\n" >> $FILE
+          printf " private fun handle(socket: Socket) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  thread {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val input = socket.getInputStream().bufferedReader()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val output = socket.getOutputStream()\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf " private fun handle(socket: Socket) {\n" >> $FILE
-          printf "  thread {\n" >> $FILE
-          printf "   val input = socket.getInputStream().bufferedReader()\n" >> $FILE
-          printf "   val output = socket.getOutputStream()\n\n" >> $FILE
+          printf "   val line = input.readLine() ?: return@thread\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val cmd = line.substringAfter(\"cmd=\").substringBefore(\" \")\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "   val line = input.readLine() ?: return@thread\n" >> $FILE
-          printf "   val cmd = line.substringAfter(\"cmd=\").substringBefore(\" \")\n\n" >> $FILE
+          printf "   val result = when(cmd) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    \"battery\" -> getBattery()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    \"wifi\" -> getWifi()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    else -> \"unknown command\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "   val result = when(cmd) {\n" >> $FILE
-          printf "    \"battery\" -> getBattery()\n" >> $FILE
-          printf "    \"wifi\" -> getWifi()\n" >> $FILE
-          printf "    else -> \"unknown command\"\n" >> $FILE
-          printf "   }\n\n" >> $FILE
+          printf "   val response = \"HTTP/1.1 200 OK\\r\\n\\r\\n\" + result\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   output.write(response.toByteArray())\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   output.flush()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   socket.close()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  }\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          # 🔥 FIX: response теперь правильно записывается
-          printf "   val response = \"HTTP/1.1 200 OK\\r\\n\\r\\n\" + result\n" >> $FILE
-          printf "   output.write(response.toByteArray())\n" >> $FILE
-          printf "   output.flush()\n" >> $FILE
-          printf "   socket.close()\n" >> $FILE
-          printf "  }\n" >> $FILE
-          printf " }\n\n" >> $FILE
+          printf " private fun getBattery(): String {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  val bm = getSystemService(BATTERY_SERVICE) as BatteryManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  return \"Battery: \$level%%\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf " private fun getBattery(): String {\n" >> $FILE
-          printf "  val bm = getSystemService(BATTERY_SERVICE) as BatteryManager\n" >> $FILE
-          printf "  val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)\n" >> $FILE
-          printf "  return \"Battery: \$level%%\"\n" >> $FILE
-          printf " }\n\n" >> $FILE
+          printf " private fun getWifi(): String {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  return if (wm.isWifiEnabled) \"WiFi ON\" else \"WiFi OFF\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf " private fun getWifi(): String {\n" >> $FILE
-          printf "  val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager\n" >> $FILE
-          printf "  return if (wm.isWifiEnabled) \"WiFi ON\" else \"WiFi OFF\"\n" >> $FILE
-          printf " }\n\n" >> $FILE
+          printf "}\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
-          printf "}\n" >> $FILE
-
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          printf "sdk.dir=$ANDROID_SDK_ROOT\n" > local.properties
 
       - name: Setup Gradle
         run: |
