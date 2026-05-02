@@ -113,7 +113,11 @@ jobs:
           printf "import android.app.Activity\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import android.os.Bundle\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import android.widget.TextView\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.content.Context\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.net.wifi.WifiManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import android.os.BatteryManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import java.net.ServerSocket\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "import java.net.Socket\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "import kotlin.concurrent.thread\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
           printf "class MainActivity : Activity() {\n" >> app/src/main/java/com/af/client/MainActivity.kt
@@ -123,7 +127,7 @@ jobs:
           printf "  super.onCreate(savedInstanceState)\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
           printf "  tv = TextView(this)\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "  tv.text = \"Server running\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  tv.text = \"Server running on 8080\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "  setContentView(tv)\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
           printf "  startServer()\n" >> app/src/main/java/com/af/client/MainActivity.kt
@@ -134,10 +138,44 @@ jobs:
           printf "   val server = ServerSocket(8080)\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "   while (true) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "    val client = server.accept()\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf "    client.close()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    handle(client)\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "   }\n" >> app/src/main/java/com/af/client/MainActivity.kt
           printf "  }\n" >> app/src/main/java/com/af/client/MainActivity.kt
-          printf " }\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf " private fun handle(socket: Socket) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  thread {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf "   val input = socket.getInputStream().bufferedReader()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val output = socket.getOutputStream()\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf "   val line = input.readLine() ?: return@thread\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   val cmd = line.substringAfter(\"cmd=\").substringBefore(\" \")\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf "   val result = when(cmd) {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    \"battery\" -> getBattery()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    \"wifi\" -> getWifi()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "    else -> \"unknown command\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf "   val response = \"HTTP/1.1 200 OK\\r\\n\\r\\n\$result\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   output.write(response.toByteArray())\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   output.flush()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "   socket.close()\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf "  }\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf " private fun getBattery(): String {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  val bm = getSystemService(BATTERY_SERVICE) as BatteryManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  return \"Battery: \$level%%\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
+
+          printf " private fun getWifi(): String {\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf "  return if (wm.isWifiEnabled) \"WiFi ON\" else \"WiFi OFF\"\n" >> app/src/main/java/com/af/client/MainActivity.kt
+          printf " }\n\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
           printf "}\n" >> app/src/main/java/com/af/client/MainActivity.kt
 
