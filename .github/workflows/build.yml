@@ -1,58 +1,133 @@
 name: Android APK CI
 
+# Когда запускать workflow
 on:
   push:
-    branches: ["main"]
-  workflow_dispatch:
+    branches: ["main"]   # при пуше в main
+  workflow_dispatch:     # ручной запуск из GitHub UI
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # виртуалка Ubuntu
 
+    # Переменные окружения
     env:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
+
+      # 📥 1. Клонируем репозиторий
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Full environment debug
+        run: |
+          echo "=== PATH ==="
+          pwd
+          echo "=== WORKSPACE ==="
+          echo $GITHUB_WORKSPACE
+          echo "=== FILES ==="
+          ls -la
+          echo "=== ANDROID SDK ==="
+          ls -la $ANDROID_SDK_ROOT || true
+
+      # ☕ 2. Ставим Java (обязательно для Gradle/Android)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17   # Android Gradle Plugin требует Java 17
 
+      # 🤖 3. Устанавливаем Android SDK (вручную)
       - name: Setup Android SDK
         run: |
+          # создаём папки SDK
           sudo mkdir -p $ANDROID_SDK_ROOT
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           cd $ANDROID_SDK_ROOT/cmdline-tools
 
+          # качаем command line tools (если ещё нет)
           if [ ! -d "latest" ]; then
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
             unzip -q tools.zip
             mv cmdline-tools latest
           fi
 
+          # добавляем sdkmanager в PATH
           export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
+          # принимаем лицензии (иначе билд упадёт)
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Setup Gradle (manual, как у тебя)
+          # ставим нужные компоненты SDK
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
+      # 🛠️ 4. Ставим Gradle вручную (без wrapper)
+      - name: Setup Gradle (manual)
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip curl
 
+          # скачиваем Gradle
           curl -L https://services.gradle.org/distributions/gradle-8.3-bin.zip -o gradle.zip
           unzip -q gradle.zip
+
+          # переименовываем для удобства
           mv gradle-8.3 gradle
           chmod +x gradle/bin/gradle
 
+      # 🔍 5. Проверяем зависимости Gradle
+      # Это нужно, чтобы понять:
+      # - подтянулся ли androidx
+      # - есть ли проблемы с репозиториями
+      - name: Check Gradle deps
+        run: |
+          ./gradle/bin/gradle dependencies --no-daemon
+
+      # 🔨 6. Сборка APK
+      # --stacktrace → показывает стек ошибки
+      # --info       → больше логов
+      # --no-daemon  → стабильнее в CI
       - name: Build APK
         run: |
-          ./gradle/bin/gradle assembleDebug --stacktrace
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
+          ./gradle/bin/gradle assembleDebug \
+            --stacktrace \
+            --info \
+            --no-daemon
+
+      # 💥 7. Если билд упал — показать последние строки логов Gradle
+      # помогает быстро увидеть причину
+      - name: Show last lines on failure
+        if: failure()
+        run: |
+          echo "=== LAST GRADLE LOGS ==="
+          tail -n 200 ~/.gradle/daemon/*/*.log || true
+
+      # 💾 8. Сохраняем лог сборки (чтобы скачать и изучить)
+      # always() → выполняется даже если билд упал
+      - name: Save build log
+        if: always()
+        run: |
+          mkdir -p logs
+
+          # повторный запуск билда, но уже в файл
+          # || true → чтобы шаг не падал
+          ./gradle/bin/gradle assembleDebug --stacktrace > logs/build.log 2>&1 || true
+
+      # 📦 9. Загружаем лог как артефакт
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: logs/
+
+      # 📱 10. Загружаем APK (если билд успешен)
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
