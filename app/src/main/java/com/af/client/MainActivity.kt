@@ -11,39 +11,55 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
-import kotlin.concurrent.thread
 import java.net.ServerSocket
 import java.net.Socket
-import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
+import kotlin.concurrent.thread
+
+// Kotlin Scripting imports
+import kotlin.script.experimental.api.*
+import kotlin.script.experimental.host.toScriptSource
+import kotlin.script.experimental.jvm.*
+import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
+
+object RuntimeState {
+    var lastResult: String = "empty"
+}
 
 class MainActivity : Activity() {
 
     lateinit var tv: TextView
-    lateinit var inputCode: EditText
-    lateinit var runButton: Button
-
-    var lastResult: String = "No result yet"
+    lateinit var editCode: EditText
+    lateinit var btnRun: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestAllPermissions()
 
         tv = TextView(this)
-        inputCode = EditText(this).apply { hint = "Enter Kotlin code here" }
-        runButton = Button(this).apply { text = "Run Code" }
+        tv.text = "Server running on 8080"
 
-        // Слушатель кнопки
-        runButton.setOnClickListener {
-            val code = inputCode.text.toString()
-            lastResult = safeEvalKotlin(code)
-            tv.text = lastResult
+        editCode = EditText(this)
+        editCode.hint = "Enter Kotlin code here"
+        editCode.minLines = 5
+
+        btnRun = Button(this)
+        btnRun.text = "Execute"
+        btnRun.setOnClickListener {
+            val code = editCode.text.toString()
+            thread {
+                val result = safeEval(code)
+                RuntimeState.lastResult = result
+            }
         }
 
-        setContentView(tv) // можно сделать LinearLayout и добавить inputCode + runButton
+        val layout = android.widget.LinearLayout(this)
+        layout.orientation = android.widget.LinearLayout.VERTICAL
+        layout.addView(tv)
+        layout.addView(editCode)
+        layout.addView(btnRun)
+
+        setContentView(layout)
+
         startServer()
     }
 
@@ -58,7 +74,11 @@ class MainActivity : Activity() {
             Manifest.permission.CAMERA,
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.POST_NOTIFICATIONS
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.INTERNET,
+            Manifest.permission.ACCESS_NETWORK_STATE,
+            Manifest.permission.ACCESS_WIFI_STATE,
+            Manifest.permission.CHANGE_WIFI_STATE
         )
 
         val toRequest = perms.filter {
@@ -91,7 +111,7 @@ class MainActivity : Activity() {
             val result = when (cmd) {
                 "battery" -> getBattery()
                 "wifi" -> getWifi()
-                "result" -> lastResult
+                "result" -> RuntimeState.lastResult
                 else -> "unknown command"
             }
 
@@ -105,7 +125,7 @@ class MainActivity : Activity() {
     private fun getBattery(): String {
         val bm = getSystemService(BATTERY_SERVICE) as BatteryManager
         val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return "Battery: ${level}%"
+        return "Battery: $level%"
     }
 
     private fun getWifi(): String {
@@ -113,40 +133,33 @@ class MainActivity : Activity() {
         return if (wm.isWifiEnabled) "WiFi ON" else "WiFi OFF"
     }
 
-    // -----------------------
-    // Основной eval engine
-    private fun safeEvalKotlin(code: String): String {
-        // блокировка опасных команд
-        val forbidden = listOf(
-            "Runtime.getRuntime",
-            "System.exit",
-            "java.io.File",
-            "java.net.Socket",
-            "java.net.URL"
-        )
+    // --------- Kotlin safe eval ---------
+    private fun safeEval(code: String): String {
+        val host = BasicJvmScriptingHost()
+
+        // запрещаем опасные слова
+        val forbidden = listOf("Runtime.getRuntime", "System.exit", "java.io.File", "java.net.Socket", "java.net.URL")
         forbidden.forEach {
             if (it in code) return "Forbidden usage detected: $it"
         }
 
-        return try {
-            // Создаем Kotlin скрипт в виде функции
-            val script = """
-                fun run(): String {
-                    ${code}
-                }
-                run()
-            """.trimIndent()
+        val compilationConfig = ScriptCompilationConfiguration {
+            jvm {
+                dependenciesFromCurrentContext(wholeClasspath = true)
+            }
+            defaultImports("kotlin.math.*")
+        }
 
-            val outputStream = ByteArrayOutputStream()
-            val compiler = K2JVMCompiler()
-            val args = arrayOf("-script", "-") // компилируем как скрипт
-
-            compiler.exec(
-                PrintingMessageCollector(PrintStream(outputStream), MessageRenderer.PLAIN_RELATIVE_PATHS, false),
-                args
+        val evaluationConfig = ScriptEvaluationConfiguration {
+            providedProperties(
+                "getBatterySafe" to { getBattery() },
+                "getWifiSafe" to { getWifi() }
             )
+        }
 
-            outputStream.toString()
+        return try {
+            val res = host.eval(code.toScriptSource(), compilationConfig, evaluationConfig)
+            res.valueOrNull()?.returnValue?.toString() ?: "ok"
         } catch (e: Exception) {
             "Error: ${e.message}"
         }
