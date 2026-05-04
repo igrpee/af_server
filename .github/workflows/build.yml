@@ -107,6 +107,18 @@ jobs:
         run: |
           echo "=== LAST GRADLE LOGS ==="
           tail -n 200 ~/.gradle/daemon/*/*.log || true
+      - name: Save last Gradle log
+        if: failure()
+        run: |
+          mkdir -p logs
+          tail -n 200 ~/.gradle/daemon/*/*.log > logs/failure.log || true
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+        name: gradle-failure-log
+        path: logs/failure.log
 
       # 💾 8. Сохраняем лог сборки (чтобы скачать и изучить)
       # always() → выполняется даже если билд упал
