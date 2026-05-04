@@ -1,6 +1,6 @@
 name: Android APK CI
 
-# Когда запускать workflow
+# Когда запускать workflow!
 on:
   push:
     branches: ["main"]   # при пуше в main
