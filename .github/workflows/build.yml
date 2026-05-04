@@ -102,11 +102,6 @@ jobs:
 
       # 💥 7. Если билд упал — показать последние строки логов Gradle
       # помогает быстро увидеть причину
-      - name: Show last lines on failure
-        if: failure()
-        run: |
-          echo "=== LAST GRADLE LOGS ==="
-          tail -n 200 ~/.gradle/daemon/*/*.log || true
       - name: Save last Gradle log
         if: failure()
         run: |
