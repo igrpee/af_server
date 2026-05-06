@@ -115,7 +115,7 @@ jobs:
           name: gradle-failure-log
           path: logs/failure.log
 
-      # 💾 8. Сохраняем лог сборки (чтобы скачать и изучить)
+      # 💾 8. Сохраняем лог сборки (чтобы скачать и изучить) and
       # always() → выполняется даже если билд упал
       - name: Save build log
         if: always()
